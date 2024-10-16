@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Hashtag Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .topic-container {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        select, button, input {
+            padding: 10px;
+            margin: 5px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        button {
+            background-color: #0095f6;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0074cc;
+        }
+        #copyAll {
+            background-color: #34a853;
+            margin-top: 15px;
+        }
+        #copyAll:hover {
+            background-color: #2d8d47;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            min-height: 50px;
+        }
+        .hashtag {
+            display: inline-block;
+            margin: 5px;
+            padding: 5px 10px;
+            background-color: #e1f5fe;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .hashtag:hover {
+            background-color: #b3e5fc;
+            transform: scale(1.05);
+        }
+        .success-message {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            display: none;
+            text-align: center;
+        }
+        .custom-topic {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .favorites {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .favorite-hashtag {
+            background-color: #ffeb3b;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+        .dark-mode {
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .dark-mode .container {
+            background-color: #2d2d2d;
+        }
+        .dark-mode .hashtag {
+            background-color: #3d3d3d;
+            color: #ffffff;
+        }
+        .history {
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .history-item {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            cursor: pointer;
+        }
+        .statistics {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1> Hashtag Generator</h1>
+        <button id="themeToggle" onclick="toggleTheme()">Toggle Dark Mode</button>
+        
+        <div class="controls">
+            <select id="topicSelect">
+                <option value="food">Food</option>
+                <option value="travel">Travel</option>
+                <option value="fitness">Fitness</option>
+                <option value="fashion">Fashion</option>
+                <option value="technology">Technology</option>
+                <option value="nature">Nature</option>
+            </select>
+            
+            <input type="number" id="hashtagCount" min="1" max="15" value="5" placeholder="Number of hashtags">
+            
+            <button onclick="generateHashtags()">Generate</button>
+            <button onclick="shuffleExisting()">Shuffle</button>
+        </div>
+        <div class="custom-topic">
+            <h3>Add Custom Topic</h3>
+            <input type="text" id="customTopicName" placeholder="Topic name">
+            <input type="text" id="customHashtags" placeholder="Hashtags (comma-separated)">
+            <button onclick="addCustomTopic()">Add Topic</button>
+        </div>
+
+        <div id="result"></div>
+        <button id="copyAll" onclick="copyAllHashtags()" style="display: none;">Copy All Hashtags</button>
+        
+        <div class="favorites">
+            <h3>Favorite Hashtags</h3>
+            <div id="favoritesList"></div>
+        </div>
+
+        <div class="history">
+            <h3>Generation History</h3>
+            <div id="historyList"></div>
+        </div>
+
+        <div class="statistics">
+            <h3>Statistics</h3>
+            <p>Total Generations: <span id="totalGenerations">0</span></p>
+            <p>Favorite Hashtags: <span id="totalFavorites">0</span></p>
+            <p>Most Used Topic: <span id="mostUsedTopic">-</span></p>
+        </div>
+
+        <div id="successMessage" class="success-message"></div>
+    </div>
+
+    <script>
+        let generationHistory = [];
+        let favorites = new Set();
+        let statistics = {
+            totalGenerations: 0,
+            topicCounts: {},
+        };
+
+        const hashtags = {
+            food: ['foodie', 'foodporn', 'instafood', 'foodphotography', 'foodstagram', 'yummy', 'delicious', 'homemade', 'chef', 'cooking', 'foodlover', 'dinner', 'lunch', 'breakfast', 'healthyfood'],
+            travel: ['wanderlust', 'travelgram', 'instatravel', 'travelphotography', 'adventure', 'traveling', 'explore', 'vacation', 'holiday', 'tourism', 'travelblogger', 'destination', 'journey', 'travellife'],
+            fitness: ['gym', 'workout', 'fitness', 'fitnessmotivation', 'training', 'health', 'fit', 'healthy', 'bodybuilding', 'lifestyle', 'exercise', 'motivation', 'weightloss', 'strong'],
+            fashion: ['style', 'fashion', 'ootd', 'fashionblogger', 'streetstyle', 'outfit', 'instafashion', 'fashionista', 'trendy', 'accessories', 'shopping', 'model', 'beauty', 'fashionstyle'],
+            technology: ['tech', 'technology', 'innovation', 'coding', 'programming', 'developer', 'software', 'digital', 'computer', 'ai', 'future', 'startup', 'cybersecurity', 'data'],
+            nature: ['nature', 'naturephotography', 'wildlife', 'outdoors', 'landscape', 'environment', 'mountains', 'ocean', 'forest', 'photography', 'earth', 'natural', 'adventure', 'explore']
+        };
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+        }
+
+        function getRandomHashtags(array, count) {
+            const shuffled = [...array].sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, count);
+        }
+
+        function showSuccessMessage(message) {
+            const successMessage = document.getElementById('successMessage');
+            successMessage.textContent = message;
+            successMessage.style.display = 'block';
+            setTimeout(() => {
+                successMessage.style.display = 'none';
+            }, 2000);
+        }
+
+        function toggleFavorite(hashtag) {
+            if (favorites.has(hashtag)) {
+                favorites.delete(hashtag);
+            } else {
+                favorites.add(hashtag);
+            }
+            updateFavoritesList();
+            updateStatistics();
+        }
+
+        function updateFavoritesList() {
+            const favoritesList = document.getElementById('favoritesList');
+            favoritesList.innerHTML = '';
+            favorites.forEach(hashtag => {
+                const hashtagElement = document.createElement('span');
+                hashtagElement.className = 'hashtag';
+                hashtagElement.textContent = hashtag;
+                hashtagElement.onclick = () => copyToClipboard(hashtag);
+                favoritesList.appendChild(hashtagElement);
+            });
+        }
+
+        function addCustomTopic() {
+            const topicName = document.getElementById('customTopicName').value.trim();
+            const hashtagsInput = document.getElementById('customHashtags').value.trim();
+            
+            if (topicName && hashtagsInput) {
+                const newHashtags = hashtagsInput.split(',').map(tag => tag.trim().replace('#', ''));
+                hashtags[topicName] = newHashtags;
+                
+                const select = document.getElementById('topicSelect');
+                const option = document.createElement('option');
+                option.value = topicName;
+                option.textContent = topicName;
+                select.appendChild(option);
+                
+                showSuccessMessage('Custom topic added successfully!');
+                document.getElementById('customTopicName').value = '';
+                document.getElementById('customHashtags').value = '';
+            }
+        }
+
+        async function copyToClipboard(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                showSuccessMessage('Copied to clipboard!');
+            } catch (err) {
+                showSuccessMessage('Failed to copy text');
+            }
+        }
+
+        function shuffleExisting() {
+            const resultDiv = document.getElementById('result');
+            const existingHashtags = Array.from(resultDiv.querySelectorAll('.hashtag'))
+                .map(el => el.textContent.replace('#', ''));
+            
+            if (existingHashtags.length > 0) {
+                displayHashtags(getRandomHashtags(existingHashtags, existingHashtags.length));
+            }
+        }
+
+        function updateHistory(hashtags, topic) {
+            generationHistory.unshift({ hashtags, topic, timestamp: new Date() });
+            if (generationHistory.length > 10) generationHistory.pop();
+            
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = '';
+            
+            generationHistory.forEach(item => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                historyItem.textContent = `${item.topic}: ${item.hashtags.join(' ')}`;
+                historyItem.onclick = () => displayHashtags(item.hashtags);
+                historyList.appendChild(historyItem);
+            });
+        }
+
+        function updateStatistics() {
+            statistics.totalGenerations++;
+            const topic = document.getElementById('topicSelect').value;
+            statistics.topicCounts[topic] = (statistics.topicCounts[topic] || 0) + 1;
+            
+            document.getElementById('totalGenerations').textContent = statistics.totalGenerations;
+            document.getElementById('totalFavorites').textContent = favorites.size;
+            
+            const mostUsedTopic = Object.entries(statistics.topicCounts)
+                .sort((a, b) => b[1] - a[1])[0];
+            document.getElementById('mostUsedTopic').textContent = mostUsedTopic ? mostUsedTopic[0] : '-';
+        }
+
+        function displayHashtags(selectedHashtags) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '';
+            
+            selectedHashtags.forEach(hashtag => {
+                const hashtagElement = document.createElement('span');
+                hashtagElement.className = `hashtag ${favorites.has('#' + hashtag) ? 'favorite-hashtag' : ''}`;
+                hashtagElement.textContent = `#${hashtag}`;
+                hashtagElement.onclick = () => copyToClipboard(hashtagElement.textContent);
+                hashtagElement.ondblclick = () => toggleFavorite(hashtagElement.textContent);
+                resultDiv.appendChild(hashtagElement);
+            });
+
+            document.getElementById('copyAll').style.display = 'block';
+        }
+
+        function generateHashtags() {
+            const topic = document.getElementById('topicSelect').value;
+            const count = parseInt(document.getElementById('hashtagCount').value) || 5;
+            const selectedHashtags = getRandomHashtags(hashtags[topic], Math.min(count, 15));
+            
+            displayHashtags(selectedHashtags);
+            updateHistory(selectedHashtags, topic);
+            updateStatistics();
+        }
+
+        function copyAllHashtags() {
+            const hashtagElements = document.querySelectorAll('.hashtag');
+            const allHashtags = Array.from(hashtagElements)
+                .map(el => el.textContent)
+                .join(' ');
+            
+            if (allHashtags) {
+                copyToClipboard(allHashtags);
+            }
+        }
+
+        // Initialize
+        generateHashtags();
+    </script>
+</body>
+</html>
